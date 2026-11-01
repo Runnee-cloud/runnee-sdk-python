@@ -1,0 +1,23 @@
+name: Python SDK
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest && python -m mypy && python -m ruff check . && python -m ruff format --check . && python -m build && python -m twine check dist/*
+      - name: Install built wheel into a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/runnee-consumer"
+          "$RUNNER_TEMP/runnee-consumer/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/runnee-consumer/bin/python" -c "from runnee import Runnee, AsyncRunnee; import importlib.metadata; print(importlib.metadata.version('runnee'))"
